@@ -5,11 +5,11 @@ from TelegramBot.logging import LOGGER
 
 load_dotenv("config.env")
 
-API_ID = int(getenv("API_ID"))
+API_ID = int(getenv("API_ID", "0"))
 API_HASH = getenv("API_HASH")
 BOT_TOKEN = getenv("BOT_TOKEN")
 
-OWNER_USERID = json.loads(getenv("OWNER_USERID"))
+OWNER_USERID = json.loads(getenv("OWNER_USERID", "[]"))
 SUDO_USERID = OWNER_USERID.copy()
 
 try:
