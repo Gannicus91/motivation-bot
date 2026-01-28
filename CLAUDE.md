@@ -11,39 +11,49 @@ A Telegram bot for habit tracking built on the Pyrogram framework (MTProto API).
 ```bash
 # Run the bot
 python3 -m TelegramBot
-# or
-bash start
+
+# Run all tests
+pytest
+
+# Run a single test file
+pytest tests/unit/services/test_streak_service.py
+
+# Run a specific test
+pytest tests/unit/services/test_streak_service.py::TestStreakService::test_missed_day_resets_streak
 
 # Install dependencies
 pip3 install -r requirements.txt
-
-# Docker
-docker-compose up --build
 ```
 
 ## Architecture
 
-### Entry Point & Initialization
-- `TelegramBot/__init__.py` - Bot initialization: sets up uvloop, validates MongoDB connection, creates Pyrogram client with plugin autoloading
-- `TelegramBot/__main__.py` - Entry point that starts the bot
-- `TelegramBot/config.py` - Environment variables loaded from `config.env`
+### Three-Layer Architecture
+The habit tracking features follow a clean separation:
+1. **Database Layer** (`database/`) - Raw MongoDB operations via wrapper classes (e.g., `HabitsDB`, `StreaksDB`)
+2. **Service Layer** (`services/`) - Business logic that orchestrates database calls (e.g., `StreakService.on_approval()` handles reset checks + increment)
+3. **Plugin Layer** (`plugins/`) - Telegram handlers that call services
 
 ### Plugin System
 Plugins are auto-discovered from `TelegramBot/plugins/` via Pyrogram's smart plugins. Organized by permission level:
-- `plugins/users/` - Public commands (start, ping, paste)
-- `plugins/sudo/` - Elevated commands for SUDO_USERID users (speedtest, serverstats, dbstats)
-- `plugins/developer/` - Owner-only commands for OWNER_USERID (shell, broadcast, updater)
+- `plugins/users/` - Public commands and handlers (habits, photo submissions)
+- `plugins/sudo/` - Elevated commands for SUDO_USERID users (reviews, dbstats)
+- `plugins/developer/` - Owner-only commands for OWNER_USERID (broadcast, updater)
 
-### Database Layer
-- `database/MongoDb.py` - MongoDB wrapper class with CRUD operations using motor (async driver)
-- `database/database.py` - High-level functions for saving users/chats
-- Collections: `users`, `chats` in database `TelegramBot`
+### Database Collections
+- `users`, `chats` - User/chat data persistence
+- `habits` - Habit definitions with notification schedules
+- `submissions` - Photo submissions with review status (pending/approved/rejected)
+- `streaks` - Streak tracking per user per habit
+
+### Key Database Classes
+Each collection has a dedicated wrapper in `database/`:
+- `HabitsDB` - CRUD for habits, query by notification time
+- `SubmissionsDB` - Create submissions, update status, query pending
+- `StreaksDB` - Increment/reset streaks, track longest streak
 
 ### Helpers
 - `helpers/filters.py` - Custom Pyrogram filters: `dev_cmd`, `sudo_cmd`, `is_ratelimited`
 - `helpers/decorators.py` - `@admin_commands`, `@catch_errors`, `@run_sync_in_thread`
-- `helpers/ratelimiter.py` - Rate limiting using pyrate_limiter (leaky bucket algorithm)
-- `helpers/functions.py` - Utility functions (`isAdmin`, `get_readable_time`, `get_readable_bytes`)
 
 ## Plugin Template
 
@@ -56,6 +66,14 @@ from pyrogram.types import Message
 async def my_handler(client: Client, message: Message):
     await message.reply_text("Response")
 ```
+
+## Testing
+
+Tests use `pytest` with `pytest-asyncio` (auto mode). Key fixtures in `tests/conftest.py`:
+- `mongo_client`, `mongo_database` - mongomock-motor for in-memory MongoDB
+- `habits_collection`, `submissions_collection`, `streaks_collection` - Collection fixtures
+- `mock_pyrogram_client`, `mock_message`, `mock_callback_query` - Pyrogram mocks
+- Use `freezegun.freeze_time` for date-dependent tests (especially streak logic)
 
 ## Environment Variables
 

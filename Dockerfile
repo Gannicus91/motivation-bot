@@ -1,21 +1,16 @@
-# Use an official Python runtime as the base image.
-# https://hub.docker.com/_/python
 FROM python:3.10-slim
 
-# Set the working directory in the container.
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
 WORKDIR /app
 
-# Allowing read, write, and execute permissions .
-RUN chmod 777 /app
-
-# Copy the requirements.txt file to the container.
 COPY requirements.txt .
-
-# Install the Python dependencies.
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy the Python script to the container.
-COPY . .
+COPY TelegramBot/ ./TelegramBot/
 
-# Set the default command to run when the container starts.
+RUN useradd --create-home appuser && chown -R appuser:appuser /app
+USER appuser
+
 CMD ["python3", "-m", "TelegramBot"]
