@@ -255,3 +255,55 @@ class TestSubmissionsDatabase:
 
         assert len(pending) == 1
         assert len(approved) == 1
+
+    @freeze_time("2024-01-15 14:30:00")
+    async def test_has_submission_today_ignores_rejected_submissions(
+        self, submissions_collection, sample_habit_id, sample_user_id, sample_admin_id
+    ):
+        """
+        BUG FIX TEST: has_submission_today should ignore rejected submissions.
+
+        This allows users to resubmit after their proof photo was rejected.
+        Only pending or approved submissions should count as "already submitted".
+        """
+        db = SubmissionsDB(submissions_collection)
+
+        # Create and reject a submission
+        sub_id = await db.create_submission(sample_habit_id, sample_user_id, "photo1")
+        await db.reject_submission(sub_id, sample_admin_id, "Photo unclear")
+
+        # User should be able to submit again - rejected submission doesn't count
+        result = await db.has_submission_today(sample_user_id, sample_habit_id)
+
+        assert result is False
+
+    @freeze_time("2024-01-15 14:30:00")
+    async def test_has_submission_today_counts_pending_submissions(
+        self, submissions_collection, sample_habit_id, sample_user_id
+    ):
+        """has_submission_today should count pending submissions."""
+        db = SubmissionsDB(submissions_collection)
+
+        # Create a pending submission
+        await db.create_submission(sample_habit_id, sample_user_id, "photo1")
+
+        # Should return True - pending submission counts
+        result = await db.has_submission_today(sample_user_id, sample_habit_id)
+
+        assert result is True
+
+    @freeze_time("2024-01-15 14:30:00")
+    async def test_has_submission_today_counts_approved_submissions(
+        self, submissions_collection, sample_habit_id, sample_user_id, sample_admin_id
+    ):
+        """has_submission_today should count approved submissions."""
+        db = SubmissionsDB(submissions_collection)
+
+        # Create and approve a submission
+        sub_id = await db.create_submission(sample_habit_id, sample_user_id, "photo1")
+        await db.approve_submission(sub_id, sample_admin_id)
+
+        # Should return True - approved submission counts
+        result = await db.has_submission_today(sample_user_id, sample_habit_id)
+
+        assert result is True

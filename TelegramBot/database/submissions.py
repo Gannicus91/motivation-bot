@@ -170,12 +170,15 @@ class SubmissionsDB:
         """
         Check if user has submitted proof for a habit today.
 
+        Only counts pending or approved submissions. Rejected submissions
+        are ignored to allow users to resubmit.
+
         Args:
             user_id: Telegram user ID.
             habit_id: The ObjectId of the habit.
 
         Returns:
-            True if user has submitted today, False otherwise.
+            True if user has a pending or approved submission today, False otherwise.
         """
         today = date.today()
         start_of_day = datetime(today.year, today.month, today.day, 0, 0, 0)
@@ -184,6 +187,7 @@ class SubmissionsDB:
         submission = await self.collection.find_one({
             "user_id": user_id,
             "habit_id": habit_id,
+            "status": {"$in": ["pending", "approved"]},
             "submitted_at": {
                 "$gte": start_of_day,
                 "$lte": end_of_day,
