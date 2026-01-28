@@ -1,0 +1,2 @@
+# Run notification check every minute
+* * * * * cd /app && python3 -m scheduler.send_notifications >> /var/log/cron.log 2>&1

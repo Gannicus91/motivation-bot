@@ -31,6 +31,21 @@ services:
     networks:
       - bot-network
 
+  scheduler:
+    image: ghcr.io/${GITHUB_REPOSITORY}-scheduler:${IMAGE_TAG:-latest}
+    container_name: motivation-bot-scheduler
+    restart: unless-stopped
+    depends_on:
+      mongo:
+        condition: service_healthy
+    environment:
+      - API_ID=${API_ID}
+      - API_HASH=${API_HASH}
+      - BOT_TOKEN=${BOT_TOKEN}
+      - MONGO_URI=mongodb://mongo:27017/TelegramBot
+    networks:
+      - bot-network
+
 networks:
   bot-network:
     driver: bridge
